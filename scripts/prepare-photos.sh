@@ -31,6 +31,13 @@ for f in "$SRC"/*; do
   esac
 done
 
+# Кадры, которых в архиве нет, лежат прямо в репозитории —
+# свадебные, например. Их тоже берём.
+if [ -d wedding ]; then
+  echo "Беру кадры из wedding/: $(ls wedding | wc -l)"
+  cp wedding/* "$RAW/" 2>/dev/null || true
+fi
+
 shopt -u nocaseglob
 
 # Отбираем картинки. Мимо идут стикеры, кружочки, аватарки и прочий мусор
