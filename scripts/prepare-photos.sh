@@ -100,7 +100,9 @@ if [ "$DATED" -gt 0 ]; then
 fi
 echo "Примеры имён: $(head -3 /tmp/photo-list.txt | xargs -n1 basename | tr '\n' ' ')"
 
-sort -t$'\t' -k1,1 -k2,2V /tmp/photo-dated.tsv > /tmp/photo-sorted.tsv
+# Дубликаты вон, порядок — по photos/order.txt, если он есть
+python3 scripts/photo-order.py /tmp/photo-dated.tsv "$OUT/order.txt" > /tmp/photo-sorted.tsv
+TOTAL=$(wc -l < /tmp/photo-sorted.tsv)
 
 # Соответствие «номер → исходный путь → дата», пригодится для подписей
 : > "$OUT/index.tsv"

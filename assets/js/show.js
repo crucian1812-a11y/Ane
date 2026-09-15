@@ -284,10 +284,14 @@
     var n = photos.length;
     if (!n || !moments.length) return [];
 
-    // якоря: первый кадр, снятый не раньше указанной даты
+    // якоря: либо прямой номер кадра, либо первый кадр,
+    // снятый не раньше указанной даты
     var slots = moments.map(function (item) {
       var pos = null;
-      if (item.after) {
+      if (typeof item.frame === "number" && item.frame >= 1 && item.frame <= n) {
+        pos = item.frame - 1;
+      }
+      if (pos === null && item.after) {
         for (var i = 0; i < n; i++) {
           if (photos[i].date && photos[i].date >= item.after) { pos = i; break; }
         }
