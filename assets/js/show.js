@@ -30,7 +30,8 @@
     momentText: $("[data-moment-text]"),
     finale: $("[data-finale]"),
     bar: $("[data-bar]"),
-    audio: $("[data-audio]"),
+    audioA: $("[data-audio-a]"),
+    audioB: $("[data-audio-b]"),
     progress: $("[data-progress]"),
     toggleIcon: $("[data-toggle-icon]"),
   };
@@ -276,7 +277,7 @@
     if (frame >= photos.length && !ending) {
       ending = true;
       finaleTimer = setTimeout(function () {
-        fadeTo(0, FADE, finish);
+        fade(active, 0, FADE, finish);
       }, FINALE_HOLD);
     }
   }
@@ -404,67 +405,144 @@
 
   // ---------- музыка ----------
 
+  // Плееров два. Переход между песнями перекрёстный: один затухает,
+  // второй в это же время нарастает, тишины между ними нет.
+  var players = [el.audioA, el.audioB];
+  var gains = [null, null];
+  var fades = [null, null];
+  var active = 0;
   var trackIndex = -1;
-  var audio = el.audio;
-  var actx = null, analyser = null, freq = null, avg = 0, gain = null;
+  var prefetch = null;
 
-  function setVolume(v) {
-    if (gain) gain.gain.value = v;
-    else audio.volume = v;
+  var actx = null, analyser = null, freq = null, avg = 0;
+
+  function audio() { return players[active]; }
+
+  function setGain(i, v) {
+    v = Math.max(0, Math.min(1, v));
+    if (gains[i]) gains[i].gain.value = v;
+    else players[i].volume = v;
   }
 
-  function getVolume() {
-    return gain ? gain.gain.value : audio.volume;
+  function getGain(i) {
+    return gains[i] ? gains[i].gain.value : players[i].volume;
   }
 
-  var fadeTimer = null;
-
-  function fadeTo(target, ms, done) {
-    clearInterval(fadeTimer);
-    var from = getVolume();
-    var steps = Math.max(1, Math.round(ms / 50));
+  function fade(i, target, ms, done) {
+    clearInterval(fades[i]);
+    var from = getGain(i);
+    var steps = Math.max(1, Math.round(ms / 40));
     var step = 0;
-    fadeTimer = setInterval(function () {
+    fades[i] = setInterval(function () {
       step++;
-      setVolume(Math.max(0, Math.min(1, from + (target - from) * step / steps)));
+      setGain(i, from + (target - from) * step / steps);
       if (step >= steps) {
-        clearInterval(fadeTimer);
+        clearInterval(fades[i]);
+        fades[i] = null;
         if (done) done();
       }
-    }, 50);
+    }, 40);
   }
 
-  function loadTrack(i) {
-    var track = tracks[i];
-    if (!track) return;
-    trackIndex = i;
-    audio.src = track.src;
-    text("[data-track-title]", track.title);
-    text("[data-track-artist]", track.artist);
+  function initAnalyser() {
+    if (actx || (!window.AudioContext && !window.webkitAudioContext)) return;
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      var mix = actx.createGain();
+      analyser = actx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.75;
+      mix.connect(analyser);
+      analyser.connect(actx.destination);
 
-    // перемотка возможна только после того, как браузер прочитал файл
-    if (track.start) {
-      var seek = function () {
-        try { audio.currentTime = track.start; } catch (err) { /* переживём */ }
-        audio.removeEventListener("loadedmetadata", seek);
-      };
-      audio.addEventListener("loadedmetadata", seek);
+      players.forEach(function (player, i) {
+        var source = actx.createMediaElementSource(player);
+        var g = actx.createGain();
+        g.gain.value = i === 0 ? 1 : 0;
+        source.connect(g);
+        g.connect(mix);
+        gains[i] = g;
+      });
+
+      freq = new Uint8Array(analyser.frequencyBinCount);
+    } catch (err) {
+      analyser = null; // не получилось — будем показывать по таймеру
+      gains = [null, null];
     }
+  }
+
+  // iOS разрешает звук только после касания, причём каждому элементу
+  // отдельно. Будим второй плеер на первом же нажатии — беззвучно,
+  // и сразу с той песней, которая ему достанется следующей.
+  function wakePlayers() {
+    players.forEach(function (player, i) {
+      if (i === active) return;
+      var next = tracks[1] || tracks[0];
+      if (next) loadInto(player, next);
+
+      player.muted = true;
+      var settle = function () {
+        // если плеер к этому моменту уже вступил по-настоящему — не трогаем:
+        // обещание play() приходит с задержкой и однажды уже заглушило трек
+        if (active === i) { player.muted = false; return; }
+        player.pause();
+        player.muted = false;
+        if (next) { try { player.currentTime = next.start || 0; } catch (err) { /* переживём */ } }
+      };
+
+      var started = player.play();
+      if (started && started.then) started.then(settle).catch(function () { player.muted = false; });
+      else settle();
+    });
+  }
+
+  function loadInto(player, track) {
+    if (player.dataset.src !== track.src) {
+      player.src = track.src;
+      player.dataset.src = track.src;
+    }
+    var seek = function () {
+      try { player.currentTime = track.start || 0; } catch (err) { /* переживём */ }
+    };
+    if (player.readyState >= 1) seek();
+    else player.addEventListener("loadedmetadata", function once() {
+      player.removeEventListener("loadedmetadata", once);
+      seek();
+    });
+  }
+
+  // следующую песню держим наготове, чтобы переход не спотыкался о загрузку
+  function warmNext(i) {
+    var next = tracks[i + 1];
+    if (!next) return;
+    prefetch = new Audio();
+    prefetch.preload = "auto";
+    prefetch.src = next.src;
   }
 
   function playTrack(i, smooth) {
-    if (i === trackIndex || !tracks[i]) return;
-    if (!smooth) {
-      loadTrack(i);
-      setVolume(1);
-      audio.play().catch(function () {});
-      return;
+    var track = tracks[i];
+    if (!track || i === trackIndex) return;
+
+    var from = active;
+    var to = smooth ? 1 - active : active;
+
+    loadInto(players[to], track);
+    players[to].play().catch(function () {});
+
+    if (smooth && from !== to) {
+      setGain(to, 0);
+      fade(to, 1, FADE);
+      fade(from, 0, FADE, function () { players[from].pause(); });
+    } else {
+      setGain(to, 1);
     }
-    fadeTo(0, FADE / 2, function () {
-      loadTrack(i);
-      audio.play().catch(function () {});
-      fadeTo(1, FADE / 2);
-    });
+
+    active = to;
+    trackIndex = i;
+    text("[data-track-title]", track.title);
+    text("[data-track-artist]", track.artist);
+    warmNext(i);
   }
 
   // какой трек положен этому кадру
@@ -476,25 +554,6 @@
     return found;
   }
 
-  function initAnalyser() {
-    if (actx || (!window.AudioContext && !window.webkitAudioContext)) return;
-    try {
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-      var source = actx.createMediaElementSource(audio);
-      analyser = actx.createAnalyser();
-      analyser.fftSize = 1024;
-      analyser.smoothingTimeConstant = 0.75;
-      gain = actx.createGain();
-      source.connect(analyser);
-      analyser.connect(gain);
-      gain.connect(actx.destination);
-      freq = new Uint8Array(analyser.frequencyBinCount);
-    } catch (err) {
-      analyser = null; // не получилось — будем показывать по таймеру
-      gain = null;
-    }
-  }
-
   var lastSpawn = 0;
   var rafId = null;
 
@@ -503,7 +562,7 @@
     var now = performance.now();
     // последний кадр досматриваем молча, новые не выбрасываем
     if (ending) return;
-    if (audio.paused) { lastSpawn = Math.max(lastSpawn, now - MAX_GAP + 600); return; }
+    if (audio().paused) { lastSpawn = Math.max(lastSpawn, now - MAX_GAP + 600); return; }
 
     if (analyser) {
       analyser.getByteFrequencyData(freq);
@@ -521,26 +580,30 @@
     if (now - lastSpawn > MAX_GAP) { lastSpawn = now; spawn(); }
   }
 
-  // Кусок песни короче, чем отрезок ленты под него, — значит повторяем
-  // его с начала, а не проваливаемся в тишину.
-  audio.addEventListener("timeupdate", function () {
-    var track = tracks[trackIndex];
-    if (!track) return;
-    var from = track.start || 0;
-    if (track.duration && audio.currentTime >= from + track.duration) {
-      try { audio.currentTime = from; } catch (err) { /* переживём */ }
-    }
-    if (photos.length) {
-      el.progress.style.width = Math.min(100, (shown / photos.length) * 100).toFixed(1) + "%";
-    }
-  });
+  players.forEach(function (player, i) {
+    // Кусок песни короче, чем отрезок ленты под него, — значит повторяем
+    // его с начала, а не проваливаемся в тишину.
+    player.addEventListener("timeupdate", function () {
+      if (i !== active) return;
+      var track = tracks[trackIndex];
+      if (!track) return;
+      var from = track.start || 0;
+      if (track.duration && player.currentTime >= from + track.duration) {
+        try { player.currentTime = from; } catch (err) { /* переживём */ }
+      }
+      if (photos.length) {
+        el.progress.style.width = Math.min(100, (shown / photos.length) * 100).toFixed(1) + "%";
+      }
+    });
 
-  audio.addEventListener("ended", function () {
     // сюда попадаем, только если кусок дотянул до конца файла
-    var track = tracks[trackIndex];
-    if (!track) return;
-    audio.currentTime = track.start || 0;
-    audio.play().catch(function () {});
+    player.addEventListener("ended", function () {
+      if (i !== active) return;
+      var track = tracks[trackIndex];
+      if (!track) return;
+      player.currentTime = track.start || 0;
+      player.play().catch(function () {});
+    });
   });
 
   // ---------- запуск, пауза, финал ----------
@@ -557,7 +620,9 @@
     initAnalyser();
     if (actx && actx.state === "suspended") actx.resume();
 
-    setVolume(1);
+    setGain(0, 1);
+    setGain(1, 0);
+    wakePlayers();
     playTrack(0, false);
 
     plan = planMoments();
@@ -576,7 +641,7 @@
     rafId = null;
     clearTimeout(finaleTimer);
     finaleTimer = null;
-    audio.pause();
+    players.forEach(function (p) { p.pause(); });
     live.slice().forEach(retire);
     live = [];
     el.moment.hidden = true;
@@ -599,7 +664,9 @@
     ending = false;
     el.bar.classList.remove("is-hidden");
     trackIndex = -1;
-    setVolume(1);
+    setGain(0, 1);
+    setGain(1, 0);
+    wakePlayers();
     playTrack(0, false);
     if (photos.length) spawn();
     lastSpawn = performance.now();
@@ -608,18 +675,31 @@
   }
 
   function toggle() {
-    if (audio.paused) {
+    if (audio().paused) {
       if (actx && actx.state === "suspended") actx.resume();
-      audio.play().catch(function () {});
+      audio().play().catch(function () {});
       el.toggleIcon.textContent = "❚❚";
     } else {
-      audio.pause();
+      audio().pause();
       el.toggleIcon.textContent = "▶";
     }
   }
 
+  // Музыка привязана к ленте, поэтому переключать её отдельно бессмысленно:
+  // следующий же кадр вернул бы прежнюю песню. Кнопка перематывает вперёд
+  // саму ленту — к кадру, с которого начинается следующая песня.
   function nextTrack() {
-    if (trackIndex + 1 < tracks.length) playTrack(trackIndex + 1, true);
+    var next = tracks[trackIndex + 1];
+    if (!next || !photos.length) return;
+
+    photoIndex = Math.min(photos.length - 1, Math.max(0, (next.fromFrame || 1) - 1));
+    shown = photoIndex;
+
+    momentIndex = 0;
+    while (plan[momentIndex] && plan[momentIndex].pos < photoIndex) momentIndex++;
+
+    spawn();
+    lastSpawn = performance.now();
   }
 
   function fullscreen() {

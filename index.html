@@ -68,12 +68,14 @@
     <span class="bar__artist" data-track-artist></span>
   </div>
   <div class="bar__progress"><i data-progress></i></div>
-  <button class="bar__btn" data-next aria-label="Следующая песня">&#9197;</button>
+  <button class="bar__btn" data-next aria-label="Промотать к следующей песне">&#9197;</button>
   <button class="bar__btn bar__btn--wide" data-fullscreen aria-label="Во весь экран">&#9974;</button>
   <a class="bar__btn bar__btn--wide" href="gallery.html" aria-label="Все фотографии">&#9638;</a>
 </div>
 
-<audio data-audio preload="auto" playsinline></audio>
+<!-- два плеера: пока один затухает, второй уже играет -->
+<audio data-audio-a preload="auto" playsinline></audio>
+<audio data-audio-b preload="auto" playsinline></audio>
 
 <script src="site.config.js"></script>
 <script src="assets/js/photos.js"></script>
