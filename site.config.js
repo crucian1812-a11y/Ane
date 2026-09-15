@@ -36,6 +36,7 @@ window.SITE = {
     life: 9000,       // сколько карточка висит, прежде чем уплыть
     finaleHold: 5000, // сколько последний кадр висит перед финальным экраном
     fade: 2000,       // плавность перехода между песнями
+    stall: 6000,      // сколько ждать фотографию, если она не успела загрузиться
     momentEvery: 6,   // запасной ритм: реплика раз в столько фотографий
     momentGapMin: 2,  // и не ближе, чем через столько кадров после предыдущей
     momentHold: 7000, // и держится столько
@@ -85,12 +86,12 @@ window.SITE = {
     {
       src: "assets/music/02-zaz-la-lessive.mp3",
       title: "La Lessive", artist: "ZAZ",
-      fromFrame: 15, start: 0, duration: 140,
+      fromFrame: 15, start: 0, duration: 135,
     },
     {
       src: "assets/music/03-beautiful-boys-ty-vybiraesh-chudesa.mp3",
       title: "Ты выбираешь чудеса", artist: "Beautiful Boys",
-      fromFrame: 59, start: 0, duration: 125,
+      fromFrame: 57, start: 0, duration: 125,
     },
   ],
 

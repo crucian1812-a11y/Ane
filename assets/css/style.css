@@ -226,7 +226,11 @@ img { max-width: 100%; display: block; }
   max-height: 60vh;
   object-fit: cover;
   background: #e6ddd4;
+  opacity: 0;
+  transition: opacity .5s ease;
 }
+
+.card img.is-ready { opacity: 1; }
 
 .card.is-out { animation: cardOut 1.6s ease forwards; }
 

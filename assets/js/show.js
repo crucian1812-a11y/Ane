@@ -18,6 +18,7 @@
   var MOMENT_HOLD = pace.momentHold || 7000;
   var FINALE_HOLD = pace.finaleHold || 5000;
   var FADE = pace.fade || 2000;
+  var STALL = pace.stall || 3500; // сколько ждать отстающую картинку
 
   var el = {
     intro: $("[data-intro]"),
@@ -108,6 +109,7 @@
         remember();
         openStart();
         startButton.focus();
+        if (photos.length) preload(0, 6);
       } else {
         error.textContent = gate.error || "Не сходится. Попробуй ещё раз.";
         error.hidden = false;
@@ -199,11 +201,41 @@
     return photo ? (photo.src || photo) : null;
   }
 
-  function preload(from, count) {
-    for (var i = 0; i < count; i++) {
-      var src = srcOf(photoAt(from + i));
-      if (src) { var img = new Image(); img.src = src; }
+  // Картинки тянем очередью, по три за раз: если запросить десяток сразу,
+  // они поделят канал поровну и ни одна не успеет к своему кадру.
+  var cache = Object.create(null);
+  var queue = [];
+  var loading = 0;
+
+  function want(src) {
+    if (!src) return null;
+    if (cache[src]) return cache[src];
+    var img = new Image();
+    cache[src] = img;
+    queue.push({ img: img, src: src });
+    pump();
+    return img;
+  }
+
+  function pump() {
+    while (loading < 3 && queue.length) {
+      var job = queue.shift();
+      loading++;
+      var done = function () { loading--; pump(); };
+      job.img.addEventListener("load", done);
+      job.img.addEventListener("error", done);
+      job.img.src = job.src;
     }
+  }
+
+  function ready(photo) {
+    var src = srcOf(photo);
+    var img = src && cache[src];
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
+
+  function preload(from, count) {
+    for (var i = 0; i < count; i++) want(srcOf(photoAt(from + i)));
   }
 
   var bgFlip = false;
@@ -231,11 +263,12 @@
     var wrapped = photoIndex === 0;
     var frame = current + 1;
     shown++;
-    preload(photoIndex, 3);
+    preload(photoIndex, 10);
 
     // песня меняется по кадру, а не по своему окончанию,
     // иначе музыка разъезжается с лентой
     playTrack(trackForFrame(frame), true);
+    warmNext(frame);
 
     var slot = nextSlot();
     var card = document.createElement("figure");
@@ -250,6 +283,8 @@
     img.src = src;
     img.alt = "";
     img.decoding = "async";
+    if (ready(photo)) img.classList.add("is-ready");
+    else img.addEventListener("load", function () { img.classList.add("is-ready"); });
     card.appendChild(img);
     el.cards.appendChild(card);
     live.push(card);
@@ -511,13 +546,16 @@
     });
   }
 
-  // следующую песню держим наготове, чтобы переход не спотыкался о загрузку
-  function warmNext(i) {
-    var next = tracks[i + 1];
-    if (!next) return;
-    prefetch = new Audio();
-    prefetch.preload = "auto";
-    prefetch.src = next.src;
+  // Следующую песню готовим не заранее, а за несколько кадров до смены:
+  // мегабайты музыки, скачанные раньше времени, отбирают канал у фотографий.
+  function warmNext(frame) {
+    var next = tracks[trackIndex + 1];
+    if (!next || prefetch === next.src) return;
+    if ((next.fromFrame || 1) - frame > 8) return;
+    var spare = players[1 - active];
+    if (!spare.paused) return; // он ещё доигрывает предыдущий переход
+    prefetch = next.src;
+    loadInto(spare, next);
   }
 
   function playTrack(i, smooth) {
@@ -542,7 +580,6 @@
     trackIndex = i;
     text("[data-track-title]", track.title);
     text("[data-track-artist]", track.artist);
-    warmNext(i);
   }
 
   // какой трек положен этому кадру
@@ -564,7 +601,12 @@
     if (ending) return;
     if (audio().paused) { lastSpawn = Math.max(lastSpawn, now - MAX_GAP + 600); return; }
 
-    if (analyser) {
+    // Пустую рамку не показываем: если картинка не доехала, ждём её.
+    // Дольше STALL не ждём — лучше рамка, чем застывший показ.
+    var next = photoAt(photoIndex);
+    var waiting = !ready(next) && now - lastSpawn < MAX_GAP + STALL;
+
+    if (analyser && !waiting) {
       analyser.getByteFrequencyData(freq);
       var energy = 0;
       for (var i = 1; i < 14; i++) energy += freq[i];
@@ -577,7 +619,7 @@
       if (loud && now - lastSpawn > MIN_GAP) { lastSpawn = now; spawn(); return; }
     }
 
-    if (now - lastSpawn > MAX_GAP) { lastSpawn = now; spawn(); }
+    if (now - lastSpawn > MAX_GAP && !waiting) { lastSpawn = now; spawn(); }
   }
 
   players.forEach(function (player, i) {
@@ -627,10 +669,10 @@
 
     plan = planMoments();
 
-    // первый кадр выбрасываем руками, дальше темп держит pulse
-    if (photos.length) { preload(0, 5); spawn(); }
+    // Первый кадр выбросит pulse — как только картинка будет готова.
+    if (photos.length) preload(0, 10);
     else showMoment();
-    lastSpawn = performance.now();
+    lastSpawn = performance.now() - MAX_GAP;
     if (!rafId) pulse();
 
     poke();
@@ -735,4 +777,8 @@
   ["mousemove", "touchstart", "click"].forEach(function (evt) {
     document.addEventListener(evt, function () { if (!el.stage.hidden) poke(); }, { passive: true });
   });
+
+  // Пока человек стоит на обложке, тянем первые кадры: иначе показ
+  // начинается с пустых рамок, пока грузится и музыка, и фотографии.
+  if (photos.length && (!gateForm || gateForm.hidden)) preload(0, 6);
 })();

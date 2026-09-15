@@ -118,7 +118,9 @@ export MAGICK OUT
 resize_one() {
   local src="${1%%$'\t'*}"
   local num="${1##*$'\t'}"
-  "$MAGICK" "$src" -auto-orient -resize '1600x1600>' -quality 82 -strip "$OUT/web/$num.jpg" 2>/dev/null || return 0
+  # 1200px хватает: карточка на экране не шире 500 точек, даже с ретиной.
+  # Гнать 1600px — значит забивать канал и показывать пустые рамки.
+  "$MAGICK" "$src" -auto-orient -resize '1200x1200>' -quality 78 -sampling-factor 4:2:0 -interlace Plane -strip "$OUT/web/$num.jpg" 2>/dev/null || return 0
   "$MAGICK" "$src" -auto-orient -thumbnail '500x500^' -gravity center -extent 500x500 -quality 78 -strip "$OUT/thumbs/$num.jpg" 2>/dev/null || true
 }
 export -f resize_one
