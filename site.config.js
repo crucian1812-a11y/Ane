@@ -28,10 +28,14 @@ window.SITE = {
   },
 
   // Темп показа, всё в миллисекундах. Хочешь быстрее — уменьшай gap.
+  // Сейчас выходит около 3,2 секунды на кадр: 94 фотографии укладываются
+  // ровно в пять минут, под три обрезанных трека.
   pace: {
-    minGap: 3000,     // чаще этого новое фото не появится, даже на громком бите
-    maxGap: 6000,     // а реже — не бывает: если бит не пришёл, кадр выйдет сам
-    life: 12000,      // сколько карточка висит, прежде чем уплыть
+    minGap: 2200,     // чаще этого новое фото не появится, даже на громком бите
+    maxGap: 3650,     // а реже — не бывает: если бит не пришёл, кадр выйдет сам
+    life: 9000,       // сколько карточка висит, прежде чем уплыть
+    finaleHold: 5000, // сколько последний кадр висит перед финальным экраном
+    fade: 2000,       // плавность перехода между песнями
     momentEvery: 6,   // запасной ритм: реплика раз в столько фотографий
     momentGapMin: 2,  // и не ближе, чем через столько кадров после предыдущей
     momentHold: 7000, // и держится столько
@@ -66,11 +70,28 @@ window.SITE = {
     { type: "line", text: "Я очень сильно люблю тебя и нашего сына.", frame: 90 },
   ],
 
-  // Порядок треков важен — в нём они и играют
+  // Песни играют не целиком, а кусками, и переключаются не по своему
+  // окончанию, а по номеру кадра — иначе музыка разъезжается с лентой.
+  //   fromFrame — с какого кадра играет
+  //   start     — с какой секунды песни начинать
+  //   duration  — сколько секунд играть (если лента идёт медленнее,
+  //               кусок повторится с начала, а не оборвётся в тишину)
   tracks: [
-    { src: "assets/music/01-lana-del-rey-young-and-beautiful.mp3", title: "Young and Beautiful", artist: "Lana Del Rey" },
-    { src: "assets/music/02-zaz-la-lessive.mp3", title: "La Lessive", artist: "ZAZ" },
-    { src: "assets/music/03-beautiful-boys-ty-vybiraesh-chudesa.mp3", title: "Ты выбираешь чудеса", artist: "Beautiful Boys" },
+    {
+      src: "assets/music/01-lana-del-rey-young-and-beautiful.mp3",
+      title: "Young and Beautiful", artist: "Lana Del Rey",
+      fromFrame: 1, start: 0, duration: 46,
+    },
+    {
+      src: "assets/music/02-zaz-la-lessive.mp3",
+      title: "La Lessive", artist: "ZAZ",
+      fromFrame: 15, start: 0, duration: 140,
+    },
+    {
+      src: "assets/music/03-beautiful-boys-ty-vybiraesh-chudesa.mp3",
+      title: "Ты выбираешь чудеса", artist: "Beautiful Boys",
+      fromFrame: 59, start: 0, duration: 125,
+    },
   ],
 
   finale: {

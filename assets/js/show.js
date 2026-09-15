@@ -16,6 +16,8 @@
   var MAX_GAP = pace.maxGap || 6000;
   var CARD_LIFE = pace.life || 12000;
   var MOMENT_HOLD = pace.momentHold || 7000;
+  var FINALE_HOLD = pace.finaleHold || 5000;
+  var FADE = pace.fade || 2000;
 
   var el = {
     intro: $("[data-intro]"),
@@ -184,6 +186,9 @@
   // ---------- фотографии ----------
 
   var photoIndex = 0;
+  var shown = 0;      // сколько кадров уже показали — по нему идёт музыка
+  var finaleTimer = null;
+  var ending = false; // лента дошла до конца, новые кадры больше не нужны
 
   function photoAt(i) {
     return photos[i % photos.length] || null;
@@ -223,7 +228,13 @@
 
     photoIndex = (photoIndex + 1) % photos.length;
     var wrapped = photoIndex === 0;
+    var frame = current + 1;
+    shown++;
     preload(photoIndex, 3);
+
+    // песня меняется по кадру, а не по своему окончанию,
+    // иначе музыка разъезжается с лентой
+    playTrack(trackForFrame(frame), true);
 
     var slot = nextSlot();
     var card = document.createElement("figure");
@@ -247,16 +258,27 @@
     var maxLive = small() ? 1 : 3;
     while (live.length > maxLive) retire(live.shift());
 
+    var life = reduced ? Math.round(CARD_LIFE * 0.6) : CARD_LIFE;
+    if (frame >= photos.length) life += FINALE_HOLD;
     card._timer = setTimeout(function () {
       var at = live.indexOf(card);
       if (at !== -1) live.splice(at, 1);
       retire(card);
-    }, reduced ? Math.round(CARD_LIFE * 0.6) : CARD_LIFE);
+    }, life);
 
     if (momentDue(current)) showMoment();
     // лента пошла по второму кругу — пусть и реплики начнутся сначала,
     // но только после того, как последняя из них успела показаться
     if (wrapped) momentIndex = 0;
+
+    // показ кончается вместе с лентой, а не с последней песней:
+    // последний кадр висит ещё немного, потом музыка уходит в тишину
+    if (frame >= photos.length && !ending) {
+      ending = true;
+      finaleTimer = setTimeout(function () {
+        fadeTo(0, FADE, finish);
+      }, FINALE_HOLD);
+    }
   }
 
   function retire(card) {
@@ -382,31 +404,94 @@
 
   // ---------- музыка ----------
 
-  var trackIndex = 0;
+  var trackIndex = -1;
   var audio = el.audio;
-  var actx = null, analyser = null, freq = null, avg = 0;
+  var actx = null, analyser = null, freq = null, avg = 0, gain = null;
+
+  function setVolume(v) {
+    if (gain) gain.gain.value = v;
+    else audio.volume = v;
+  }
+
+  function getVolume() {
+    return gain ? gain.gain.value : audio.volume;
+  }
+
+  var fadeTimer = null;
+
+  function fadeTo(target, ms, done) {
+    clearInterval(fadeTimer);
+    var from = getVolume();
+    var steps = Math.max(1, Math.round(ms / 50));
+    var step = 0;
+    fadeTimer = setInterval(function () {
+      step++;
+      setVolume(Math.max(0, Math.min(1, from + (target - from) * step / steps)));
+      if (step >= steps) {
+        clearInterval(fadeTimer);
+        if (done) done();
+      }
+    }, 50);
+  }
 
   function loadTrack(i) {
     var track = tracks[i];
     if (!track) return;
+    trackIndex = i;
     audio.src = track.src;
     text("[data-track-title]", track.title);
     text("[data-track-artist]", track.artist);
+
+    // перемотка возможна только после того, как браузер прочитал файл
+    if (track.start) {
+      var seek = function () {
+        try { audio.currentTime = track.start; } catch (err) { /* переживём */ }
+        audio.removeEventListener("loadedmetadata", seek);
+      };
+      audio.addEventListener("loadedmetadata", seek);
+    }
+  }
+
+  function playTrack(i, smooth) {
+    if (i === trackIndex || !tracks[i]) return;
+    if (!smooth) {
+      loadTrack(i);
+      setVolume(1);
+      audio.play().catch(function () {});
+      return;
+    }
+    fadeTo(0, FADE / 2, function () {
+      loadTrack(i);
+      audio.play().catch(function () {});
+      fadeTo(1, FADE / 2);
+    });
+  }
+
+  // какой трек положен этому кадру
+  function trackForFrame(frame) {
+    var found = 0;
+    for (var i = 0; i < tracks.length; i++) {
+      if (frame >= (tracks[i].fromFrame || 1)) found = i;
+    }
+    return found;
   }
 
   function initAnalyser() {
-    if (actx || !window.AudioContext && !window.webkitAudioContext) return;
+    if (actx || (!window.AudioContext && !window.webkitAudioContext)) return;
     try {
       actx = new (window.AudioContext || window.webkitAudioContext)();
       var source = actx.createMediaElementSource(audio);
       analyser = actx.createAnalyser();
       analyser.fftSize = 1024;
       analyser.smoothingTimeConstant = 0.75;
+      gain = actx.createGain();
       source.connect(analyser);
-      analyser.connect(actx.destination);
+      analyser.connect(gain);
+      gain.connect(actx.destination);
       freq = new Uint8Array(analyser.frequencyBinCount);
     } catch (err) {
       analyser = null; // не получилось — будем показывать по таймеру
+      gain = null;
     }
   }
 
@@ -416,6 +501,8 @@
   function pulse() {
     rafId = requestAnimationFrame(pulse);
     var now = performance.now();
+    // последний кадр досматриваем молча, новые не выбрасываем
+    if (ending) return;
     if (audio.paused) { lastSpawn = Math.max(lastSpawn, now - MAX_GAP + 600); return; }
 
     if (analyser) {
@@ -434,18 +521,26 @@
     if (now - lastSpawn > MAX_GAP) { lastSpawn = now; spawn(); }
   }
 
-  audio.addEventListener("ended", function () {
-    trackIndex++;
-    if (trackIndex >= tracks.length) { finish(); return; }
-    loadTrack(trackIndex);
-    audio.play().catch(function () {});
+  // Кусок песни короче, чем отрезок ленты под него, — значит повторяем
+  // его с начала, а не проваливаемся в тишину.
+  audio.addEventListener("timeupdate", function () {
+    var track = tracks[trackIndex];
+    if (!track) return;
+    var from = track.start || 0;
+    if (track.duration && audio.currentTime >= from + track.duration) {
+      try { audio.currentTime = from; } catch (err) { /* переживём */ }
+    }
+    if (photos.length) {
+      el.progress.style.width = Math.min(100, (shown / photos.length) * 100).toFixed(1) + "%";
+    }
   });
 
-  audio.addEventListener("timeupdate", function () {
-    if (!audio.duration) return;
-    var whole = tracks.length || 1;
-    var done = (trackIndex + audio.currentTime / audio.duration) / whole;
-    el.progress.style.width = (done * 100).toFixed(2) + "%";
+  audio.addEventListener("ended", function () {
+    // сюда попадаем, только если кусок дотянул до конца файла
+    var track = tracks[trackIndex];
+    if (!track) return;
+    audio.currentTime = track.start || 0;
+    audio.play().catch(function () {});
   });
 
   // ---------- запуск, пауза, финал ----------
@@ -462,8 +557,8 @@
     initAnalyser();
     if (actx && actx.state === "suspended") actx.resume();
 
-    loadTrack(trackIndex);
-    audio.play().catch(function () {});
+    setVolume(1);
+    playTrack(0, false);
 
     plan = planMoments();
 
@@ -479,6 +574,9 @@
   function finish() {
     cancelAnimationFrame(rafId);
     rafId = null;
+    clearTimeout(finaleTimer);
+    finaleTimer = null;
+    audio.pause();
     live.slice().forEach(retire);
     live = [];
     el.moment.hidden = true;
@@ -493,12 +591,16 @@
       el.finale.hidden = true;
       el.finale.classList.remove("is-gone");
     }, 900);
-    trackIndex = 0;
     photoIndex = 0;
+    shown = 0;
     momentIndex = 0;
+    clearTimeout(finaleTimer);
+    finaleTimer = null;
+    ending = false;
     el.bar.classList.remove("is-hidden");
-    loadTrack(0);
-    audio.play().catch(function () {});
+    trackIndex = -1;
+    setVolume(1);
+    playTrack(0, false);
     if (photos.length) spawn();
     lastSpawn = performance.now();
     if (!rafId) pulse();
@@ -517,10 +619,7 @@
   }
 
   function nextTrack() {
-    trackIndex++;
-    if (trackIndex >= tracks.length) { finish(); return; }
-    loadTrack(trackIndex);
-    audio.play().catch(function () {});
+    if (trackIndex + 1 < tracks.length) playTrack(trackIndex + 1, true);
   }
 
   function fullscreen() {
