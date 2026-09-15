@@ -88,8 +88,9 @@ const photos = files.map((file) => {
   const caption = captions[file] ?? (original ? captions[original] ?? captions[path.basename(original)] : undefined);
   if (caption) item.caption = caption;
 
-  // по ней слайдшоу решает, когда показывать подпись про свадьбу или про сына
+  // по ним слайдшоу решает, когда показывать подпись про свадьбу или про сына
   if (entry && entry.date) item.date = entry.date;
+  if (original) item.name = path.basename(original);
 
   return item;
 });

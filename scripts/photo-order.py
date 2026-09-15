@@ -6,6 +6,7 @@
 файлов, собранный руками), а всё, чего в списке нет, уезжает в конец
 по дате съёмки и имени.
 """
+import fnmatch
 import hashlib
 import os
 import sys
@@ -40,22 +41,38 @@ def main():
         seen[key] = path
         unique.append((taken, path))
 
-    order = {}
+    # Строка order.txt — либо имя файла, либо шаблон со звёздочкой.
+    # Шаблон нужен для кадров, которые появятся позже: имена заранее
+    # неизвестны, а место в ленте у них уже есть.
+    names, patterns = {}, []
     if os.path.exists(order_file):
         with open(order_file, encoding="utf-8") as f:
-            for i, name in enumerate(f):
-                name = name.strip()
-                if name:
-                    order[name] = i
+            for i, line in enumerate(f):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "*" in line or "?" in line:
+                    patterns.append((i, line))
+                else:
+                    names[line] = i
+
+    def rank_of(path):
+        base = os.path.basename(path)
+        if base in names:
+            return names[base]
+        for i, pattern in patterns:
+            if fnmatch.fnmatch(base.lower(), pattern.lower()):
+                return i
+        return None
 
     def key(row):
         taken, path = row
-        rank = order.get(os.path.basename(path))
-        return (0, rank, "", "") if rank is not None else (1, 0, taken, path)
+        rank = rank_of(path)
+        return (0, rank, "", os.path.basename(path)) if rank is not None else (1, 0, taken, path)
 
     unique.sort(key=key)
 
-    listed = sum(1 for _, p in unique if os.path.basename(p) in order)
+    listed = sum(1 for _, p in unique if rank_of(p) is not None)
     print(f"Повторов выброшено: {dropped}", file=sys.stderr)
     print(f"Из них разложено по order.txt: {listed}, остальных: {len(unique) - listed}", file=sys.stderr)
 

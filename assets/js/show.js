@@ -342,11 +342,20 @@
     var n = photos.length;
     if (!n || !moments.length) return [];
 
-    // якоря: либо прямой номер кадра, либо первый кадр,
-    // снятый не раньше указанной даты
+    // якоря: имя файла, прямой номер кадра или дата съёмки
     var slots = moments.map(function (item) {
       var pos = null;
-      if (typeof item.frame === "number" && item.frame >= 1 && item.frame <= n) {
+
+      // самый крепкий якорь: подпись цепляется за конкретную фотографию
+      // и не съезжает, сколько бы кадров ни добавилось до неё
+      if (item.onPhoto) {
+        var mask = new RegExp("^" + String(item.onPhoto).replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+        for (var f = 0; f < n; f++) {
+          if (photos[f].name && mask.test(photos[f].name)) { pos = f; break; }
+        }
+      }
+
+      if (pos === null && typeof item.frame === "number" && item.frame >= 1 && item.frame <= n) {
         pos = item.frame - 1;
       }
       if (pos === null && item.after) {
@@ -582,13 +591,15 @@
     text("[data-track-artist]", track.artist);
   }
 
-  // какой трек положен этому кадру
+  // Какая песня положена этому кадру. Назад не отматываем: если песня
+  // уже уступила место следующей, доиграв свой кусок, кадр не должен
+  // тащить её обратно.
   function trackForFrame(frame) {
     var found = 0;
     for (var i = 0; i < tracks.length; i++) {
       if (frame >= (tracks[i].fromFrame || 1)) found = i;
     }
-    return found;
+    return Math.max(found, trackIndex);
   }
 
   var lastSpawn = 0;
@@ -631,7 +642,13 @@
       if (!track) return;
       var from = track.start || 0;
       if (track.duration && player.currentTime >= from + track.duration) {
-        try { player.currentTime = from; } catch (err) { /* переживём */ }
+        if (tracks[trackIndex + 1]) {
+          // кусок доиграл — не гоняем его по второму кругу,
+          // а сразу передаём эстафету следующей песне
+          playTrack(trackIndex + 1, true);
+        } else {
+          try { player.currentTime = from; } catch (err) { /* переживём */ }
+        }
       }
       if (photos.length) {
         el.progress.style.width = Math.min(100, (shown / photos.length) * 100).toFixed(1) + "%";
