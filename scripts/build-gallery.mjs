@@ -30,14 +30,21 @@ async function readJson(file, fallback) {
   }
 }
 
-// photos/index.tsv — «0001 <tab> исходный/путь.jpg», его пишет prepare-photos.sh
+// photos/index.tsv — «0001 <tab> исходный/путь.jpg <tab> 2019-01-27»,
+// его пишет prepare-photos.sh. Дата может быть 9999-99-99 — значит неизвестна.
 async function readIndex() {
   const file = path.join(photosDir, "index.tsv");
   if (!existsSync(file)) return {};
   const map = {};
   for (const line of (await readFile(file, "utf8")).split("\n")) {
-    const [num, original] = line.split("\t");
-    if (num && original) map[num.trim()] = original.trim();
+    const [num, original, taken] = line.split("\t");
+    if (!num || !original) continue;
+    map[num.trim()] = {
+      original: original.trim(),
+      date: taken && /^\d{4}-\d{2}-\d{2}$/.test(taken.trim()) && !taken.startsWith("9999")
+        ? taken.trim()
+        : null,
+    };
   }
   return map;
 }
@@ -75,9 +82,14 @@ const photos = files.map((file) => {
 
   if (prepared && existsSync(path.join(thumbsDir, file))) item.thumb = `photos/thumbs/${file}`;
 
-  const original = prepared ? index[path.parse(file).name] : file;
+  const entry = prepared ? index[path.parse(file).name] : null;
+  const original = entry ? entry.original : file;
+
   const caption = captions[file] ?? (original ? captions[original] ?? captions[path.basename(original)] : undefined);
   if (caption) item.caption = caption;
+
+  // по ней слайдшоу решает, когда показывать подпись про свадьбу или про сына
+  if (entry && entry.date) item.date = entry.date;
 
   return item;
 });
@@ -89,4 +101,8 @@ await writeFile(outFile, `// Этот файл генерируется авто
 window.PHOTOS = [${photos.length ? "\n" + body + "\n" : ""}];
 `);
 
-console.log(`Фотографий: ${photos.length}${prepared ? " (подготовленные)" : " (как есть)"} → assets/js/photos.js`);
+const dated = photos.filter((p) => p.date);
+console.log(
+  `Фотографий: ${photos.length}${prepared ? " (подготовленные)" : " (как есть)"} → assets/js/photos.js` +
+  (dated.length ? `, с датой: ${dated.length} (${dated[0].date} — ${dated[dated.length - 1].date})` : ", дат нет")
+);

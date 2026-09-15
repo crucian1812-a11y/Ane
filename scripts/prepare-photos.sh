@@ -64,14 +64,52 @@ if [ "$TOTAL" -eq 0 ]; then
   exit 0
 fi
 
-# Соответствие «номер → исходный путь», пригодится для подписей
+# Дата съёмки: сначала EXIF, потом — из имени файла. Телеграм-экспорт
+# кладёт дату прямо в имя (photo_7@27-01-2019_...), камеры — в EXIF.
+# Без даты фотография уезжает в конец ленты.
+photo_date() {
+  local file="$1" base exif
+  exif=$("$MAGICK" identify -format '%[EXIF:DateTimeOriginal]' "$file" 2>/dev/null || true)
+  if [[ "$exif" =~ ^([0-9]{4}):([0-9]{2}):([0-9]{2}) ]]; then
+    echo "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}"
+    return
+  fi
+  base=$(basename "$file")
+  if [[ "$base" =~ ([0-3][0-9])-([01][0-9])-(20[0-9]{2}) ]]; then
+    echo "${BASH_REMATCH[3]}-${BASH_REMATCH[2]}-${BASH_REMATCH[1]}"
+  elif [[ "$base" =~ (20[0-9]{2})-([01][0-9])-([0-3][0-9]) ]]; then
+    echo "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}"
+  elif [[ "$base" =~ (20[0-9]{2})([01][0-9])([0-3][0-9]) ]]; then
+    echo "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}"
+  else
+    echo "9999-99-99"
+  fi
+}
+
+# Лента идёт по времени, а не по именам файлов: подписи про свадьбу
+# и про сына должны попадать на свои фотографии.
+: > /tmp/photo-dated.tsv
+while IFS= read -r src; do
+  printf '%s\t%s\n' "$(photo_date "$src")" "$src" >> /tmp/photo-dated.tsv
+done < /tmp/photo-list.txt
+
+DATED=$(grep -cv '^9999-99-99' /tmp/photo-dated.tsv || true)
+echo "Дата известна у $DATED фотографий из $TOTAL"
+if [ "$DATED" -gt 0 ]; then
+  echo "Диапазон: $(grep -v '^9999-99-99' /tmp/photo-dated.tsv | cut -f1 | sort | head -1) — $(grep -v '^9999-99-99' /tmp/photo-dated.tsv | cut -f1 | sort | tail -1)"
+fi
+echo "Примеры имён: $(head -3 /tmp/photo-list.txt | xargs -n1 basename | tr '\n' ' ')"
+
+sort -t$'\t' -k1,1 -k2,2V /tmp/photo-dated.tsv > /tmp/photo-sorted.tsv
+
+# Соответствие «номер → исходный путь → дата», пригодится для подписей
 : > "$OUT/index.tsv"
 n=0
-while IFS= read -r src; do
+while IFS=$'\t' read -r taken src; do
   n=$((n + 1))
-  printf '%04d\t%s\n' "$n" "${src#$RAW/}" >> "$OUT/index.tsv"
+  printf '%04d\t%s\t%s\n' "$n" "${src#$RAW/}" "$taken" >> "$OUT/index.tsv"
   printf '%s\t%04d\n' "$src" "$n"
-done < /tmp/photo-list.txt > /tmp/photo-jobs.tsv
+done < /tmp/photo-sorted.tsv > /tmp/photo-jobs.tsv
 
 export MAGICK OUT
 

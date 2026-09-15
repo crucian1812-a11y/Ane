@@ -186,13 +186,16 @@
   var photoIndex = 0;
 
   function photoAt(i) {
-    var p = photos[i % photos.length];
-    return p ? (p.src || p) : null;
+    return photos[i % photos.length] || null;
+  }
+
+  function srcOf(photo) {
+    return photo ? (photo.src || photo) : null;
   }
 
   function preload(from, count) {
     for (var i = 0; i < count; i++) {
-      var src = photoAt(from + i);
+      var src = srcOf(photoAt(from + i));
       if (src) { var img = new Image(); img.src = src; }
     }
   }
@@ -214,8 +217,12 @@
 
   function spawn() {
     if (!photos.length) return;
-    var src = photoAt(photoIndex);
+    var current = photoIndex;
+    var photo = photoAt(current);
+    var src = srcOf(photo);
+
     photoIndex = (photoIndex + 1) % photos.length;
+    var wrapped = photoIndex === 0;
     preload(photoIndex, 3);
 
     var slot = nextSlot();
@@ -246,8 +253,10 @@
       retire(card);
     }, reduced ? Math.round(CARD_LIFE * 0.6) : CARD_LIFE);
 
-    sinceMoment++;
-    if (sinceMoment >= momentEvery) { sinceMoment = 0; showMoment(); }
+    if (momentDue(current)) showMoment();
+    // лента пошла по второму кругу — пусть и реплики начнутся сначала,
+    // но только после того, как последняя из них успела показаться
+    if (wrapped) momentIndex = 0;
   }
 
   function retire(card) {
@@ -261,13 +270,94 @@
   // ---------- реплики ----------
 
   var momentIndex = 0;
-  var sinceMoment = 3;
-  var momentEvery = pace.momentEvery || 6;
+  var momentGapMin = pace.momentGapMin || 3;
   var momentTimer = null;
 
+  // Реплики заранее расставляются по ленте. Фотографии отсортированы
+  // по дате съёмки, поэтому «Родился Глеб» встаёт ровно на первый кадр
+  // того времени — это жёсткий якорь, он не двигается. Остальные реплики
+  // распределяются между якорями. Если дат у фотографий нет (телеграм
+  // вычищает EXIF), позиция берётся из доли ленты — поля at.
+  var plan = [];
+
+  function planMoments() {
+    var n = photos.length;
+    if (!n || !moments.length) return [];
+
+    // якоря: первый кадр, снятый не раньше указанной даты
+    var slots = moments.map(function (item) {
+      var pos = null;
+      if (item.after) {
+        for (var i = 0; i < n; i++) {
+          if (photos[i].date && photos[i].date >= item.after) { pos = i; break; }
+        }
+      }
+      return { pos: pos, hard: pos !== null, at: typeof item.at === "number" ? item.at : null };
+    });
+
+    var anchored = slots.some(function (slot) { return slot.hard; });
+
+    if (!anchored) {
+      // дат нет — раскладываем по долям ленты
+      slots.forEach(function (slot, i) {
+        slot.pos = slot.at !== null
+          ? Math.round(slot.at * (n - 1))
+          : Math.round((i + 1) * n / (slots.length + 1));
+      });
+    } else {
+      // якоря стоят намертво, остальные реплики делят промежутки между ними
+      var i = 0;
+      while (i < slots.length) {
+        if (slots[i].hard) { i++; continue; }
+        var j = i;
+        while (j < slots.length && !slots[j].hard) j++;
+        var left = i > 0 ? slots[i - 1].pos : -1;
+        var right = j < slots.length ? slots[j].pos : n;
+        var parts = j - i + 1;
+        for (var k = i; k < j; k++) {
+          slots[k].pos = Math.round(left + (right - left) * (k - i + 1) / parts);
+        }
+        i = j;
+      }
+    }
+
+    // мягкие разводим по зазору
+    for (var a = 1; a < slots.length; a++) {
+      var floor = slots[a - 1].pos + momentGapMin;
+      if (slots[a].pos < floor && !slots[a].hard) slots[a].pos = floor;
+    }
+
+    // Якорь не двигается вперёд ни при каких обстоятельствах: иначе кадры
+    // с сыном пойдут раньше, чем про него скажут. Если мягкая реплика
+    // на него наехала — отступает она, и по цепочке влево.
+    for (var b = 0; b < slots.length; b++) {
+      if (!slots[b].hard) continue;
+      for (var c = b - 1; c >= 0; c--) {
+        if (slots[c].pos < slots[c + 1].pos) break;
+        if (slots[c].hard) break;
+        slots[c].pos = Math.max(0, slots[c + 1].pos - 1);
+      }
+    }
+
+    // и хвост не должен вылезать за конец ленты, иначе последние реплики
+    // не покажутся вовсе
+    var ceil = n - 1;
+    for (var d = slots.length - 1; d >= 0; d--) {
+      if (!slots[d].hard && slots[d].pos > ceil) slots[d].pos = ceil;
+      ceil = slots[d].pos - 1;
+    }
+
+    return slots;
+  }
+
+  function momentDue(shownIndex) {
+    var slot = plan[momentIndex];
+    return !!slot && shownIndex >= slot.pos;
+  }
+
   function showMoment() {
-    if (!moments.length) return;
-    var item = moments[momentIndex % moments.length];
+    var item = moments[momentIndex];
+    if (!item) return;
     momentIndex++;
 
     clearTimeout(momentTimer);
@@ -371,6 +461,8 @@
     loadTrack(trackIndex);
     audio.play().catch(function () {});
 
+    plan = planMoments();
+
     // первый кадр выбрасываем руками, дальше темп держит pulse
     if (photos.length) { preload(0, 5); spawn(); }
     else showMoment();
@@ -400,7 +492,6 @@
     trackIndex = 0;
     photoIndex = 0;
     momentIndex = 0;
-    sinceMoment = 3;
     el.bar.classList.remove("is-hidden");
     loadTrack(0);
     audio.play().catch(function () {});
