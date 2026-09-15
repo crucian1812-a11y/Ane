@@ -56,20 +56,20 @@ window.SITE = {
     // свадебные кадры лежат в релизе под именами wedding*
     { type: "date", label: "25 июля 2014", text: "День X", onPhoto: "wedding-3.jpg", frame: 11 },
     { type: "line", text: "У нас была самая классная свадьба.", frame: 13 },
-    { type: "line", text: "Я люблю целоваться с тобой.", frame: 20 },
+    { type: "line", text: "Я люблю целоваться с тобой.", frame: 17 },
 
-    { type: "line", text: "Я выбираю тебя каждый день.", frame: 26 },
-    { type: "line", text: "Ты кормишь меня завтраком по субботам, а я тебя — философскими теориями и спорными тезисами.", frame: 34 },
+    { type: "line", text: "Я выбираю тебя каждый день.", frame: 33 },
+    { type: "line", text: "Ты кормишь меня завтраком по воскресеньям, а я тебя — философскими теориями и спорными тезисами.", frame: 41 },
 
-    { type: "date", label: "27 января 2019", text: "Родился Глеб", frame: 42 },
-    { type: "line", text: "У нас самый классный сын.", frame: 46 },
-    { type: "line", text: "Ты самая классная в мире мама для ёжика.", frame: 52 },
-    { type: "line", text: "Он нас очень любит. Тебя — чуть больше.", frame: 62 },
+    { type: "date", label: "27 января 2019", text: "Родился Глеб", frame: 49 },
+    { type: "line", text: "У нас самый классный сын.", frame: 53 },
+    { type: "line", text: "Ты самая классная в мире мама для ёжика.", frame: 59 },
+    { type: "line", text: "Он нас очень любит. Тебя — чуть больше.", frame: 69 },
 
-    { type: "line", text: "Ты могла бы выиграть чемпионат мира по уютному сворачиванию калачиком.", frame: 69 },
-    { type: "line", text: "Я люблю делать тебе массаж и обнимать.", frame: 78 },
-    { type: "line", text: "Мне очень хочется, чтобы ты улыбалась чаще.", frame: 88 },
-    { type: "line", text: "Я очень сильно люблю тебя и нашего сына.", frame: 96 },
+    { type: "line", text: "Ты могла бы выиграть чемпионат мира по уютному сворачиванию калачиком.", frame: 76 },
+    { type: "line", text: "Я люблю делать тебе массаж и обнимать.", frame: 85 },
+    { type: "line", text: "Мне очень хочется, чтобы ты улыбалась чаще.", frame: 95 },
+    { type: "line", text: "Я очень сильно люблю тебя и нашего сына.", frame: 103 },
   ],
 
   // Песни играют не целиком, а кусками, и переключаются не по своему
@@ -82,17 +82,17 @@ window.SITE = {
     {
       src: "assets/music/01-lana-del-rey-young-and-beautiful.mp3",
       title: "Young and Beautiful", artist: "Lana Del Rey",
-      fromFrame: 1, start: 0, duration: 46,
+      fromFrame: 1, start: 0, duration: 78,
     },
     {
       src: "assets/music/02-zaz-la-lessive.mp3",
       title: "La Lessive", artist: "ZAZ",
-      fromFrame: 17, start: 0, duration: 135,
+      fromFrame: 24, start: 0, duration: 135,
     },
     {
       src: "assets/music/03-beautiful-boys-ty-vybiraesh-chudesa.mp3",
       title: "Ты выбираешь чудеса", artist: "Beautiful Boys",
-      fromFrame: 63, start: 0, duration: 162,
+      fromFrame: 70, start: 0, duration: 162,
     },
   ],
 
