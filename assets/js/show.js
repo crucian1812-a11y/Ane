@@ -9,6 +9,13 @@
   var $ = function (sel) { return document.querySelector(sel); };
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var small = function () { return Math.min(innerWidth, innerHeight) < 620; };
+  var wide = function () { return innerWidth > innerHeight; };
+
+  var pace = cfg.pace || {};
+  var MIN_GAP = pace.minGap || 3000;
+  var MAX_GAP = pace.maxGap || 6000;
+  var CARD_LIFE = pace.life || 12000;
+  var MOMENT_HOLD = pace.momentHold || 7000;
 
   var el = {
     intro: $("[data-intro]"),
@@ -87,7 +94,8 @@
     var question = $("[data-gate-question]");
     var input = $("[data-gate-input]");
     var error = $("[data-gate-error]");
-    question.textContent = gate.question + (gate.hint ? " — " + gate.hint : "");
+    question.textContent = gate.question;
+    if (gate.hint) input.placeholder = gate.hint;
     text("[data-gate-button]", gate.button || "Дальше");
     gateForm.hidden = false;
 
@@ -146,11 +154,11 @@
   // всегда попадают в разные части экрана, так что три карточки
   // никогда не сбиваются в кучу и пустых половин не остаётся.
   var slots = [
-    { x: 75.0, y: 50.0, w: 44, r: "-2deg" },
+    { x: 75.0, y: 50.0, w: 42, r: "-2deg" },
     { x: 31.6, y: 63.5, w: 34, r: "2.5deg" },
-    { x: 52.2, y: 30.1, w: 40, r: "-3deg" },
+    { x: 52.2, y: 30.1, w: 38, r: "-3deg" },
     { x: 65.2, y: 65.9, w: 36, r: "1.5deg" },
-    { x: 25.4, y: 46.5, w: 42, r: "3deg" },
+    { x: 25.4, y: 46.5, w: 40, r: "3deg" },
     { x: 71.1, y: 39.3, w: 35, r: "-1.5deg" },
     { x: 43.5, y: 69.3, w: 38, r: "2deg" },
     { x: 38.5, y: 32.3, w: 36, r: "-2.5deg" },
@@ -160,9 +168,13 @@
 
   function nextSlot() {
     if (small()) {
-      // на телефоне место есть только под одну карточку — зато крупную
+      // на телефоне место есть только под одну карточку — зато крупную.
+      // Чуть выше центра: снизу нужен воздух под реплику и панель.
       mobileFlip = !mobileFlip;
-      return { x: 50, y: 47, w: 84, r: mobileFlip ? "-1.5deg" : "1.5deg" };
+      var tilt = mobileFlip ? "-1.5deg" : "1.5deg";
+      return wide()
+        ? { x: 50, y: 40, w: 42, r: tilt }
+        : { x: 50, y: 43, w: 82, r: tilt };
     }
     return slots[slotIndex++ % slots.length];
   }
@@ -232,7 +244,7 @@
       var at = live.indexOf(card);
       if (at !== -1) live.splice(at, 1);
       retire(card);
-    }, reduced ? 5200 : 9400);
+    }, reduced ? Math.round(CARD_LIFE * 0.6) : CARD_LIFE);
 
     sinceMoment++;
     if (sinceMoment >= momentEvery) { sinceMoment = 0; showMoment(); }
@@ -250,7 +262,7 @@
 
   var momentIndex = 0;
   var sinceMoment = 3;
-  var momentEvery = 5;
+  var momentEvery = pace.momentEvery || 6;
   var momentTimer = null;
 
   function showMoment() {
@@ -271,7 +283,7 @@
       el.moment.classList.add("is-out");
       el.stage.classList.remove("is-telling");
       momentTimer = setTimeout(function () { el.moment.hidden = true; }, 1200);
-    }, 6500);
+    }, MOMENT_HOLD);
   }
 
   // ---------- музыка ----------
@@ -305,8 +317,6 @@
   }
 
   var lastSpawn = 0;
-  var MIN_GAP = 1400;
-  var MAX_GAP = 3600;
   var rafId = null;
 
   function pulse() {
@@ -319,9 +329,11 @@
       var energy = 0;
       for (var i = 1; i < 14; i++) energy += freq[i];
       energy /= 13;
-      avg = avg * 0.94 + energy * 0.06;
+      // Окно усреднения — около двух секунд (60 кадров в секунду).
+      // С коротким окном среднее бежит вместе с битом и порог не пробивается.
+      avg = avg * 0.992 + energy * 0.008;
 
-      var loud = energy > avg * 1.25 && energy > 26;
+      var loud = energy > avg * 1.18 && energy > 24;
       if (loud && now - lastSpawn > MIN_GAP) { lastSpawn = now; spawn(); return; }
     }
 
@@ -359,10 +371,11 @@
     loadTrack(trackIndex);
     audio.play().catch(function () {});
 
-    lastSpawn = performance.now() - MAX_GAP;
-    if (!rafId) pulse();
+    // первый кадр выбрасываем руками, дальше темп держит pulse
     if (photos.length) { preload(0, 5); spawn(); }
     else showMoment();
+    lastSpawn = performance.now();
+    if (!rafId) pulse();
 
     poke();
   }
@@ -391,7 +404,8 @@
     el.bar.classList.remove("is-hidden");
     loadTrack(0);
     audio.play().catch(function () {});
-    lastSpawn = performance.now() - MAX_GAP;
+    if (photos.length) spawn();
+    lastSpawn = performance.now();
     if (!rafId) pulse();
     poke();
   }

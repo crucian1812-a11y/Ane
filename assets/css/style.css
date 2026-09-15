@@ -161,6 +161,7 @@ img { max-width: 100%; display: block; }
   transition: border-color .25s, background .25s;
 }
 .gate__input:focus { border-color: var(--accent); background: rgba(247,241,234,.1); }
+.gate__input::placeholder { color: rgba(247,241,234,.35); }
 
 .gate__error {
   margin: 0;
@@ -222,7 +223,7 @@ img { max-width: 100%; display: block; }
 .card img {
   width: 100%;
   height: auto;
-  max-height: 56vh;
+  max-height: 60vh;
   object-fit: cover;
   background: #e6ddd4;
 }
@@ -411,7 +412,7 @@ body.page { overflow-y: auto; background: var(--ink); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10,8,7,.96);
+  background: #0a0807;
   padding: calc(var(--pad-top) + 16px) 16px calc(var(--pad-bottom) + 16px);
 }
 
@@ -478,11 +479,45 @@ body.page { overflow-y: auto; background: var(--ink); }
 }
 
 @media (max-width: 640px) {
+  body { font-size: 16px; }
+
   .card { padding: 7px 7px 26px; }
-  .card img { max-height: 58vh; }
-  .grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .card img { max-height: 62vh; }
+
+  /* реплика садится над панелью, а не поверх неё */
+  .moment { bottom: calc(var(--pad-bottom) + 104px); width: 92vw; }
+  .moment::before { inset: -70px -10vw; }
+  .moment__text { font-size: clamp(22px, 6vw, 30px); }
+  .moment__label { font-size: 10px; letter-spacing: .26em; }
+
+  /* по кнопкам надо попадать пальцем */
+  .bar { bottom: calc(var(--pad-bottom) + 12px); gap: 2px; padding: 6px 8px; }
+  .bar__btn { width: 46px; height: 46px; font-size: 17px; }
   .bar__track { display: none; }
-  .bar__progress { width: 64px; }
+  .bar__progress { width: 56px; }
+
+  .intro, .finale { padding-left: 18px; padding-right: 18px; }
+  .intro .btn { margin-top: 32px; }
+  .gate { margin-top: 30px; gap: 12px; }
+  .finale__actions { gap: 10px; }
+
+  .grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .page__head { padding-top: calc(var(--pad-top) + 22px); padding-bottom: 18px; }
+
+  .lb__nav { font-size: 40px; padding: 12px 10px; }
+  .lb__close { font-size: 34px; }
+}
+
+/* телефон боком: по высоте места почти нет */
+@media (max-height: 520px) and (orientation: landscape) {
+  .card img { max-height: 60vh; }
+  .moment { bottom: calc(var(--pad-bottom) + 70px); }
+  .moment::before { inset: -46px -12vw; }
+  .moment__text { font-size: 19px; }
+  .moment__label { margin-bottom: 4px; }
+  .intro__name { font-size: clamp(44px, 12vh, 78px); }
+  .intro .btn { margin-top: 20px; }
+  .intro__count, .intro__hint { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
