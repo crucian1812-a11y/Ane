@@ -39,9 +39,9 @@ jobs:
         run: |
           mkdir -p _release
           if [ -n "$TAG" ]; then
-            gh release download "$TAG" --dir _release --clobber || echo "У релиза $TAG нет файлов."
+            gh release download "$TAG" --pattern '*' --dir _release --clobber || echo "У релиза $TAG нет файлов."
           else
-            gh release download --dir _release --clobber || echo "Релизов пока нет — собираю сайт без фото."
+            gh release download --pattern '*' --dir _release --clobber || echo "Релизов пока нет — собираю сайт без фото."
           fi
           ls -la _release || true
 
@@ -55,10 +55,6 @@ jobs:
 
       - name: Отключить Jekyll
         run: touch .nojekyll
-
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
