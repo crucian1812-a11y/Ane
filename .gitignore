@@ -1,0 +1,13 @@
+# Фото приезжают из релиза, в репозитории им не место
+photos/*
+!photos/README.md
+!photos/captions.json
+
+# Мусор системы и редакторов
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+node_modules/
+_release/

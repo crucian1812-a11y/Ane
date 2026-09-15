@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>С днём рождения</title>
+<meta name="description" content="Личный сайт ко дню рождения">
+<meta name="theme-color" content="#fbf6f1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero__inner">
+    <p class="kicker" data-hero-kicker></p>
+    <h1 class="hero__name" data-hero-name></h1>
+    <p class="hero__sub" data-hero-sub></p>
+    <div class="counters">
+      <div class="counter" data-countdown hidden>
+        <span class="counter__num" data-countdown-value></span>
+        <span class="counter__cap" data-countdown-caption></span>
+      </div>
+      <div class="counter" data-together hidden>
+        <span class="counter__num" data-together-value></span>
+        <span class="counter__cap" data-together-caption></span>
+      </div>
+    </div>
+  </div>
+  <div class="hero__scroll" aria-hidden="true"></div>
+</header>
+
+<main>
+
+<section class="section letter reveal" id="letter">
+  <div class="wrap wrap--narrow" data-letter></div>
+</section>
+
+<section class="section gallery reveal" id="gallery">
+  <div class="wrap">
+    <h2 class="section__title" data-gallery-title></h2>
+    <p class="section__note" data-gallery-empty hidden></p>
+    <div class="grid" data-grid></div>
+  </div>
+</section>
+
+<section class="section timeline reveal" id="timeline" hidden>
+  <div class="wrap wrap--narrow">
+    <h2 class="section__title">Как это было</h2>
+    <ol class="tl" data-timeline></ol>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <p data-footer></p>
+</footer>
+
+<div class="lightbox" data-lightbox hidden>
+  <button class="lb__close" data-lb-close aria-label="Закрыть">&times;</button>
+  <button class="lb__nav lb__nav--prev" data-lb-prev aria-label="Назад">&#8249;</button>
+  <figure class="lb__figure">
+    <img data-lb-img alt="">
+    <figcaption data-lb-cap></figcaption>
+  </figure>
+  <button class="lb__nav lb__nav--next" data-lb-next aria-label="Вперёд">&#8250;</button>
+</div>
+
+<script src="site.config.js"></script>
+<script src="assets/js/photos.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>

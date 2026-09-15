@@ -1,0 +1,79 @@
+name: Сборка и публикация сайта
+
+on:
+  push:
+    branches: [main, master]
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Архивы с фото лежат в релизах, а не в репозитории.
+      # Берём последний релиз (или тот, который только что опубликовали).
+      - name: Скачать архив с фото из релиза
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+        run: |
+          mkdir -p _release
+          if [ -n "$TAG" ]; then
+            gh release download "$TAG" --dir _release --clobber || echo "У релиза $TAG нет файлов."
+          else
+            gh release download --dir _release --clobber || echo "Релизов пока нет — собираю сайт без фото."
+          fi
+          ls -la _release || true
+
+      - name: Распаковать фото
+        run: |
+          mkdir -p photos
+          shopt -s nullglob
+          for f in _release/*.zip; do
+            echo "Распаковываю $f"
+            unzip -q -o "$f" -d photos
+          done
+          for f in _release/*.tar.gz _release/*.tgz; do
+            echo "Распаковываю $f"
+            tar -xzf "$f" -C photos
+          done
+          # мусор из macOS-архивов
+          rm -rf photos/__MACOSX
+          find photos -name '.DS_Store' -delete || true
+          rm -rf _release
+
+      - name: Собрать список фотографий
+        run: node scripts/build-gallery.mjs
+
+      - name: Отключить Jekyll
+        run: touch .nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
