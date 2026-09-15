@@ -54,13 +54,12 @@ window.SITE = {
 
     // onPhoto цепляет подпись к самой фотографии, а не к номеру кадра:
     // свадебные кадры лежат в релизе под именами wedding*
-    { type: "date", label: "25 июля 2014", text: "День X", onPhoto: "wedding-3.jpg", frame: 10 },
-    { type: "line", text: "У нас была самая классная свадьба.", frame: 12 },
-    { type: "line", text: "Я люблю целоваться с тобой.", frame: 19 },
+    { type: "date", label: "25 июля 2014", text: "День X", onPhoto: "wedding-3.jpg", frame: 11 },
+    { type: "line", text: "У нас была самая классная свадьба.", frame: 13 },
+    { type: "line", text: "Я люблю целоваться с тобой.", frame: 20 },
 
-    { type: "line", text: "Я выбираю тебя каждый день.", frame: 24 },
-    { type: "line", text: "Ты кормишь меня завтраком по субботам, а я тебя — философскими теориями и спорными тезисами.", frame: 30 },
-    { type: "line", text: "Я горжусь тем, как ты справляешься на работе.", frame: 36 },
+    { type: "line", text: "Я выбираю тебя каждый день.", frame: 26 },
+    { type: "line", text: "Ты кормишь меня завтраком по субботам, а я тебя — философскими теориями и спорными тезисами.", frame: 34 },
 
     { type: "date", label: "27 января 2019", text: "Родился Глеб", frame: 42 },
     { type: "line", text: "У нас самый классный сын.", frame: 46 },
@@ -88,7 +87,7 @@ window.SITE = {
     {
       src: "assets/music/02-zaz-la-lessive.mp3",
       title: "La Lessive", artist: "ZAZ",
-      fromFrame: 16, start: 0, duration: 135,
+      fromFrame: 17, start: 0, duration: 135,
     },
     {
       src: "assets/music/03-beautiful-boys-ty-vybiraesh-chudesa.mp3",

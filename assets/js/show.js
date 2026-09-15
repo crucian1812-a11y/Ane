@@ -665,6 +665,33 @@
     });
   });
 
+  // ---------- экран не должен гаснуть ----------
+
+  // Пять минут никто не трогает телефон — он и засыпает посреди показа.
+  // Wake Lock просят после касания, поэтому берём его на кнопке «Включить».
+  // Старые браузеры такого не умеют: там просто ничего не произойдёт.
+  var wakeLock = null;
+
+  function keepAwake() {
+    if (!navigator.wakeLock || wakeLock) return;
+    navigator.wakeLock.request("screen").then(function (lock) {
+      wakeLock = lock;
+      lock.addEventListener("release", function () { wakeLock = null; });
+    }).catch(function () { /* отказали — не беда */ });
+  }
+
+  function letSleep() {
+    if (!wakeLock) return;
+    var lock = wakeLock;
+    wakeLock = null;
+    if (lock.release) lock.release().catch(function () {});
+  }
+
+  // Свернули страницу и вернулись — блокировку снимают, просим заново
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && !el.stage.hidden && el.finale.hidden) keepAwake();
+  });
+
   // ---------- запуск, пауза, финал ----------
 
   function start() {
@@ -678,6 +705,7 @@
 
     initAnalyser();
     if (actx && actx.state === "suspended") actx.resume();
+    keepAwake();
 
     setGain(0, 1);
     setGain(1, 0);
@@ -707,6 +735,7 @@
     el.stage.classList.remove("is-telling");
     el.finale.hidden = false;
     el.bar.classList.add("is-hidden");
+    letSleep();
   }
 
   function again() {
