@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Все фотографии</title>
+<meta name="theme-color" content="#14100f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page">
+
+<header class="page__head">
+  <h1 class="page__title" data-gallery-title></h1>
+  <a class="btn btn--ghost" href="index.html" data-gallery-back></a>
+</header>
+
+<main class="wrap">
+  <p class="page__note" data-gallery-empty hidden></p>
+  <div class="grid" data-grid></div>
+</main>
+
+<div class="lightbox" data-lightbox hidden>
+  <button class="lb__close" data-lb-close aria-label="Закрыть">&times;</button>
+  <button class="lb__nav lb__nav--prev" data-lb-prev aria-label="Назад">&#8249;</button>
+  <figure class="lb__figure">
+    <img data-lb-img alt="">
+    <figcaption data-lb-cap></figcaption>
+  </figure>
+  <button class="lb__nav lb__nav--next" data-lb-next aria-label="Вперёд">&#8250;</button>
+</div>
+
+<script src="site.config.js"></script>
+<script src="assets/js/photos.js"></script>
+<script src="assets/js/gallery.js"></script>
+</body>
+</html>

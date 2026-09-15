@@ -5,72 +5,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>С днём рождения</title>
 <meta name="description" content="Личный сайт ко дню рождения">
-<meta name="theme-color" content="#fbf6f1">
+<meta name="theme-color" content="#14100f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
+<body class="show">
 
-<header class="hero">
-  <div class="hero__inner">
-    <p class="kicker" data-hero-kicker></p>
-    <h1 class="hero__name" data-hero-name></h1>
-    <p class="hero__sub" data-hero-sub></p>
-    <div class="counters">
-      <div class="counter" data-countdown hidden>
-        <span class="counter__num" data-countdown-value></span>
-        <span class="counter__cap" data-countdown-caption></span>
-      </div>
-      <div class="counter" data-together hidden>
-        <span class="counter__num" data-together-value></span>
-        <span class="counter__cap" data-together-caption></span>
-      </div>
+<!-- обложка -->
+<section class="intro" data-intro>
+  <div class="intro__inner">
+    <p class="kicker" data-intro-kicker></p>
+    <h1 class="intro__name" data-intro-name></h1>
+    <p class="intro__sub" data-intro-sub></p>
+    <p class="intro__count" data-countdown hidden></p>
+    <button class="btn btn--big" data-start></button>
+    <p class="intro__hint" data-intro-hint></p>
+  </div>
+</section>
+
+<!-- слайдшоу -->
+<div class="stage" data-stage hidden>
+  <div class="stage__bg" data-bg-a></div>
+  <div class="stage__bg" data-bg-b></div>
+  <div class="stage__veil"></div>
+  <div class="stage__cards" data-cards></div>
+  <div class="moment" data-moment hidden>
+    <span class="moment__label" data-moment-label></span>
+    <p class="moment__text" data-moment-text></p>
+  </div>
+</div>
+
+<!-- финал -->
+<section class="finale" data-finale hidden>
+  <div class="intro__inner">
+    <h2 class="intro__name" data-finale-title></h2>
+    <p class="intro__sub" data-finale-text></p>
+    <div class="finale__actions">
+      <button class="btn" data-again></button>
+      <a class="btn btn--ghost" href="gallery.html" data-finale-gallery></a>
     </div>
   </div>
-  <div class="hero__scroll" aria-hidden="true"></div>
-</header>
-
-<main>
-
-<section class="section letter reveal" id="letter">
-  <div class="wrap wrap--narrow" data-letter></div>
 </section>
 
-<section class="section gallery reveal" id="gallery">
-  <div class="wrap">
-    <h2 class="section__title" data-gallery-title></h2>
-    <p class="section__note" data-gallery-empty hidden></p>
-    <div class="grid" data-grid></div>
+<!-- управление -->
+<div class="bar" data-bar hidden>
+  <button class="bar__btn" data-toggle aria-label="Пауза">
+    <span data-toggle-icon>❚❚</span>
+  </button>
+  <div class="bar__track">
+    <span class="bar__title" data-track-title></span>
+    <span class="bar__artist" data-track-artist></span>
   </div>
-</section>
-
-<section class="section timeline reveal" id="timeline" hidden>
-  <div class="wrap wrap--narrow">
-    <h2 class="section__title">Как это было</h2>
-    <ol class="tl" data-timeline></ol>
-  </div>
-</section>
-
-</main>
-
-<footer class="footer">
-  <p data-footer></p>
-</footer>
-
-<div class="lightbox" data-lightbox hidden>
-  <button class="lb__close" data-lb-close aria-label="Закрыть">&times;</button>
-  <button class="lb__nav lb__nav--prev" data-lb-prev aria-label="Назад">&#8249;</button>
-  <figure class="lb__figure">
-    <img data-lb-img alt="">
-    <figcaption data-lb-cap></figcaption>
-  </figure>
-  <button class="lb__nav lb__nav--next" data-lb-next aria-label="Вперёд">&#8250;</button>
+  <div class="bar__progress"><i data-progress></i></div>
+  <button class="bar__btn" data-next aria-label="Следующая песня">&#9197;</button>
+  <button class="bar__btn bar__btn--wide" data-fullscreen aria-label="Во весь экран">&#9974;</button>
+  <a class="bar__btn bar__btn--wide" href="gallery.html" aria-label="Все фотографии">&#9638;</a>
 </div>
+
+<audio data-audio preload="auto" playsinline></audio>
 
 <script src="site.config.js"></script>
 <script src="assets/js/photos.js"></script>
-<script src="assets/js/main.js"></script>
+<script src="assets/js/show.js"></script>
 </body>
 </html>

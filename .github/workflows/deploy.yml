@@ -2,7 +2,7 @@ name: Сборка и публикация сайта
 
 on:
   push:
-    branches: [main, master]
+    branches: ["claude/kind-pasteur-jez48z", main, master]
   release:
     types: [published, edited]
   workflow_dispatch:
@@ -26,9 +26,13 @@ jobs:
         with:
           node-version: 20
 
-      # Архивы с фото лежат в релизах, а не в репозитории.
-      # Берём последний релиз (или тот, который только что опубликовали).
-      - name: Скачать архив с фото из релиза
+      - name: Поставить распаковщик и ImageMagick
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full imagemagick
+
+      # Фотоархив живёт в релизе, а не в репозитории.
+      - name: Скачать архив из релиза
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
@@ -41,28 +45,20 @@ jobs:
           fi
           ls -la _release || true
 
-      - name: Распаковать фото
-        run: |
-          mkdir -p photos
-          shopt -s nullglob
-          for f in _release/*.zip; do
-            echo "Распаковываю $f"
-            unzip -q -o "$f" -d photos
-          done
-          for f in _release/*.tar.gz _release/*.tgz; do
-            echo "Распаковываю $f"
-            tar -xzf "$f" -C photos
-          done
-          # мусор из macOS-архивов
-          rm -rf photos/__MACOSX
-          find photos -name '.DS_Store' -delete || true
-          rm -rf _release
+      - name: Распаковать и подготовить фотографии
+        run: bash scripts/prepare-photos.sh _release
 
       - name: Собрать список фотографий
-        run: node scripts/build-gallery.mjs
+        run: |
+          node scripts/build-gallery.mjs
+          rm -rf _release
 
       - name: Отключить Jekyll
         run: touch .nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
