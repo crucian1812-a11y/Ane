@@ -49,6 +49,62 @@
   text("[data-start]", intro.button || "Включить");
   if (cfg.name) document.title = "С днём рождения, " + cfg.name;
 
+  // ---------- вход по вопросу ----------
+  // Защита тут условная: сайт публичный, и по прямой ссылке фотографии
+  // всё равно откроются. Вопрос отсекает случайных прохожих, не более.
+
+  var UNLOCK_KEY = "ane-unlocked";
+
+  function remembered() {
+    try { return localStorage.getItem(UNLOCK_KEY) === "1"; } catch (err) { return false; }
+  }
+
+  function remember() {
+    try { localStorage.setItem(UNLOCK_KEY, "1"); } catch (err) { /* приватное окно — переживём */ }
+  }
+
+  // сравниваем только буквы и цифры: «25.07.2014» и «25 07 2014» — одно и то же
+  function normalize(value) {
+    return String(value).toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/gi, "");
+  }
+
+  var gate = cfg.gate;
+  var startButton = $("[data-start]");
+  var gateForm = $("[data-gate]");
+
+  // Подзаголовок и подсказка объясняют кнопку, поэтому до ответа
+  // на вопрос их показывать незачем.
+  function openStart() {
+    if (gateForm) gateForm.hidden = true;
+    startButton.hidden = false;
+    $("[data-intro-sub]").hidden = false;
+    $("[data-intro-hint]").hidden = false;
+  }
+
+  if (!gate || !gate.answer || remembered()) {
+    openStart();
+  } else {
+    var question = $("[data-gate-question]");
+    var input = $("[data-gate-input]");
+    var error = $("[data-gate-error]");
+    question.textContent = gate.question + (gate.hint ? " — " + gate.hint : "");
+    text("[data-gate-button]", gate.button || "Дальше");
+    gateForm.hidden = false;
+
+    gateForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (normalize(input.value) === normalize(gate.answer)) {
+        remember();
+        openStart();
+        startButton.focus();
+      } else {
+        error.textContent = gate.error || "Не сходится. Попробуй ещё раз.";
+        error.hidden = false;
+        input.select();
+      }
+    });
+  }
+
   var finale = cfg.finale || {};
   text("[data-finale-title]", finale.title);
   text("[data-finale-text]", finale.text);

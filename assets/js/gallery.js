@@ -7,6 +7,14 @@
 
   function $(sel) { return document.querySelector(sel); }
 
+  // Прямо в галерею с улицы не пускаем — сначала вопрос на обложке.
+  var locked = cfg.gate && cfg.gate.answer;
+  if (locked) {
+    var unlocked = false;
+    try { unlocked = localStorage.getItem("ane-unlocked") === "1"; } catch (err) { unlocked = false; }
+    if (!unlocked) { location.replace("index.html"); return; }
+  }
+
   $("[data-gallery-title]").textContent = gallery.title || "Все фотографии";
   $("[data-gallery-back]").textContent = gallery.back || "Назад";
   document.title = gallery.title || "Все фотографии";

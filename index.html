@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>С днём рождения</title>
 <meta name="description" content="Личный сайт ко дню рождения">
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#14100f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,10 +19,18 @@
   <div class="intro__inner">
     <p class="kicker" data-intro-kicker></p>
     <h1 class="intro__name" data-intro-name></h1>
-    <p class="intro__sub" data-intro-sub></p>
+    <p class="intro__sub" data-intro-sub hidden></p>
     <p class="intro__count" data-countdown hidden></p>
-    <button class="btn btn--big" data-start></button>
-    <p class="intro__hint" data-intro-hint></p>
+
+    <form class="gate" data-gate hidden>
+      <label class="gate__q" for="gate-input" data-gate-question></label>
+      <input class="gate__input" id="gate-input" data-gate-input type="text" autocomplete="off" spellcheck="false">
+      <button class="btn" type="submit" data-gate-button></button>
+      <p class="gate__error" data-gate-error hidden></p>
+    </form>
+
+    <button class="btn btn--big" data-start hidden></button>
+    <p class="intro__hint" data-intro-hint hidden></p>
   </div>
 </section>
 
