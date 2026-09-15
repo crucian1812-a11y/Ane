@@ -47,6 +47,15 @@ find "$RAW" -type f \
   -not -name '._*' \
   | sort -V > /tmp/photo-list.txt
 
+# Что вообще приехало в архиве — чтобы было видно, если отсеялось нужное
+echo "Содержимое архива по типам файлов:"
+find "$RAW" -type f | sed 's/.*\.//' | tr 'A-Z' 'a-z' | sort | uniq -c | sort -rn | head -12
+echo "Крупные файлы, которые не попали в галерею:"
+find "$RAW" -type f -size +2M \
+  -not -iname '*.jpg' -not -iname '*.jpeg' -not -iname '*.png' \
+  -not -iname '*.webp' -not -iname '*.heic' -not -iname '*.avif' \
+  -printf '%10s  %p\n' | sort -rn | head -10 || true
+
 TOTAL=$(wc -l < /tmp/photo-list.txt)
 echo "Нашёл фотографий: $TOTAL"
 if [ "$TOTAL" -eq 0 ]; then
