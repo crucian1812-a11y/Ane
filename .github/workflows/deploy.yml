@@ -60,6 +60,12 @@ jobs:
         with:
           path: .
 
+      - name: Итог
+        run: |
+          echo "Фотографий на сайте: $(find photos/web -name '*.jpg' 2>/dev/null | wc -l)"
+          echo "Вес фотографий: $(du -sh photos 2>/dev/null | cut -f1)"
+          echo "Вес сайта целиком: $(du -sh --exclude=.git . | cut -f1)"
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
